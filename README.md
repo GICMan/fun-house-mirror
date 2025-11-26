@@ -2,9 +2,7 @@
 
 IPCV Final Project
 
-Gabriel Casselman
-Ryan Schouten
-Matthew Tallarico
+Gabriel Casselman, Ryan Schouten, Matthew Tallarico
 
 ## Installation
 
