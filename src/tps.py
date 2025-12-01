@@ -53,7 +53,7 @@ class TPS:
 
         # compute the inverse to solve for parameters, add regularization term
         # to ensure stability
-        reg = 1e-8 * np.eye(tps_mat.shape[0])
+        reg = 1e-6 * np.eye(tps_mat.shape[0])
         self.tps_inv = np.linalg.inv(tps_mat + reg)
 
         # compute the base tps function values for each mesh points

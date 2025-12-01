@@ -29,8 +29,8 @@ dst = src.copy()
 
 def effect_1(landmarks):
     head_norm = landmarks[0]
-    head_x = head_norm.x * frame_width
-    head_y = head_norm.y * frame_height
+    head_x = head_norm[0] * frame_width
+    head_y = head_norm[1] * frame_height
 
     box_size = 100
     src = np.array([
@@ -51,19 +51,41 @@ def effect_1(landmarks):
     return src, dst
 
 
+def effect_2(landmarks):
+    left_shoulder = landmarks[12]
+    right_shoulder = landmarks[11]
+
+    left_shoulder_x = left_shoulder[0] * frame_width
+    left_shoulder_y = left_shoulder[1] * frame_height
+
+    right_shoulder_x = right_shoulder[0] * frame_width
+    right_shoulder_y = right_shoulder[1] * frame_height
+
+    # box_size = 100
+    src = np.array([
+        [0, 0],
+        [0, frame_height - 1],
+        [frame_width - 1, 0],
+        [frame_width - 1, frame_height - 1],
+        [left_shoulder_x, left_shoulder_y + 50],
+        [right_shoulder_x, right_shoulder_y + 50],
+        [left_shoulder_x, left_shoulder_y - 100],
+        [right_shoulder_x, right_shoulder_y - 100],
+        [left_shoulder_x, left_shoulder_y],
+        [right_shoulder_x, right_shoulder_y],
+    ])
+
+    dst = src.copy()
+    dst[-2] = [left_shoulder_x - 150, left_shoulder_y]
+    dst[-1] = [right_shoulder_x + 150, right_shoulder_y]
+
+    return src, dst
+
+
 def update_control_points(landmarks):
-    # head_norm = landmarks[0]
-    # head_x = head_norm.x * frame_width
-    # head_y = head_norm.y * frame_height
-    # print(head_x, head_y)
-    #
-    # # global warper
     global src
     global dst
-    # src[-1] = [head_x, head_y]
-    # dst[-1] = [head_x, head_y + 50]
-    src, dst = effect_1(landmarks)
-    #
+    src, dst = effect_2(landmarks)
 
 
 landmarker = pose_detect.pose_detector(
