@@ -20,6 +20,7 @@ class pose_detector:
         options = PoseLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=model_path),
             running_mode=VisionRunningMode.LIVE_STREAM,
+            output_segmentation_masks=True,
             result_callback=self.process_result)
 
         self.landmarker = PoseLandmarker.create_from_options(options)
@@ -37,6 +38,7 @@ class pose_detector:
             return
 
         landmarks = result.pose_landmarks[0]
+        mask = result.segmentation_masks[0]
         landmark_arr = np.zeros((len(landmarks), 3))
         for i, lmk in enumerate(landmarks):
             landmark_arr[i, 0] = lmk.x
@@ -45,8 +47,8 @@ class pose_detector:
 
         if self.prev is None:
             self.prev = landmark_arr.copy()
-            self.callback(landmark_arr)
+            self.callback(landmark_arr, mask.numpy_view())
 
         smoothed = self.alpha * landmark_arr + (1 - self.alpha) * self.prev
         self.prev = smoothed
-        self.callback(smoothed)
+        self.callback(smoothed, mask.numpy_view())

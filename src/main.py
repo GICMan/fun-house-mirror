@@ -6,7 +6,7 @@ import pose_detect
 from filters import init_filters
 
 cam = cv2.VideoCapture(1)
-cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1240)
+cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
 ret, frame = cam.read()
@@ -25,11 +25,15 @@ src = np.array([
 ])
 dst = src.copy()
 
+mask = np.full((frame_height, frame_width), 255, dtype=np.uint8)
 
-def update_control_points(landmarks):
+
+def update_control_points(landmarks, mask0):
     global src
     global dst
+    global mask
     src, dst = filters[1].filter(landmarks)
+    mask = (mask0 * 255).astype(np.uint8)
 
 
 landmarker = pose_detect.pose_detector(
@@ -41,6 +45,8 @@ while True:
     ret, frame = cam.read()
     frame = cv2.flip(frame, 1)
     landmarker.get_pose(frame)
+
+    frame = cv2.bitwise_and(frame, frame, mask=mask)
 
     diff_time = time.time() - previous_time
     previous_time = time.time()
@@ -67,6 +73,7 @@ while True:
     cv2.circle(warped, src[-1].astype(int), 8, (255, 255, 255), -1)
 
     cv2.imshow('Fun House Mirror', warped)
+    cv2.imshow('Mask', mask)
     frame_count += 1
 
     if cv2.waitKey(1) == ord('q'):
