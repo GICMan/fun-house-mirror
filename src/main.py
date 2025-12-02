@@ -1,83 +1,131 @@
-import cv2
 import time
+import argparse
+import cv2
 import numpy as np
 import tps
 import pose_detect
 from filters import init_filters
 
-cam = cv2.VideoCapture(1)
-cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-ret, frame = cam.read()
-frame_height, frame_width = frame.shape[:2]
-
-filters = init_filters((frame_width, frame_height))
-
-warper = tps.TPS((frame_width, frame_height), (50, 50), verbose=True)
-
-# initial control points will be replaced after first filter
-src = np.array([
-    [0, 0],
-    [0, frame_height - 1],
-    [frame_width - 1, 0],
-    [frame_width - 1, frame_height - 1]
-])
-dst = src.copy()
-
-mask = np.full((frame_height, frame_width), 255, dtype=np.uint8)
+MESH_SIZE = 50
 
 
-def update_control_points(landmarks, mask0):
-    global src
-    global dst
-    global mask
-    src, dst = filters[1].filter(landmarks)
-    mask = (mask0 * 255).astype(np.uint8)
+def main():
+    parser = argparse.ArgumentParser(
+        description='A digital fun-house mirror.')
+    parser.add_argument(
+        '--cam', '-c', help='Specify a camera index.',
+        default=0, type=int)
+    parser.add_argument(
+        '--rotate', '-r', help='If true, frames will be rotated 90 degrees',
+        default=False, type=bool)
+    parser.add_argument(
+        '--verbose', '-v', action='store_true', help='Verbose output',
+        default=False)
 
+    args = parser.parse_args()
+    verbose = args.verbose
 
-landmarker = pose_detect.pose_detector(
-    (frame_width, frame_height), update_control_points)
+    if verbose:
+        print(f"Using camera: {args.cam}")
 
-previous_time = 0
-frame_count = 0
-while True:
+    cam = cv2.VideoCapture(args.cam)
+    cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+    cam.set(cv2.CAP_PROP_FPS, 30)
+
     ret, frame = cam.read()
-    frame = cv2.flip(frame, 1)
-    landmarker.get_pose(frame)
+    frame_height, frame_width = frame.shape[:2]
 
-    frame = cv2.bitwise_and(frame, frame, mask=mask)
+    if verbose:
+        print(f"Frame size: {frame_width} x {frame_height}")
 
-    diff_time = time.time() - previous_time
-    previous_time = time.time()
-    if diff_time > 0:
-        fps = 1 / diff_time
-    else:
-        fps = 0
+    filters = init_filters((frame_width, frame_height))
 
-    warper.update_src_points(src)
-    map_x, map_y = warper.compute_map(dst)
+    if verbose:
+        print("Initializing filters:")
+        for filter in filters:
+            print(f"-> {filter.name}")
 
-    warped = cv2.remap(
-        frame,
-        map_x,
-        map_y,
-        interpolation=cv2.INTER_LINEAR,
-        borderMode=cv2.BORDER_REFLECT101,
-    )
+    warper = tps.TPS((frame_width, frame_height),
+                     (MESH_SIZE, MESH_SIZE))
 
-    fps_text = f"FPS: {int(fps)}"
-    cv2.putText(warped, fps_text, (20, 70),
-                cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
+    if verbose:
+        print(f"Warper created with grid: {MESH_SIZE} x {MESH_SIZE}")
 
-    cv2.circle(warped, src[-1].astype(int), 8, (255, 255, 255), -1)
+    src = np.array([
+        [0, 0],
+        [0, frame_height - 1],
+        [frame_width - 1, 0],
+        [frame_width - 1, frame_height - 1]
+    ])
+    dst = src.copy()
+    mask = np.full((frame_height, frame_width), 255, dtype=np.uint8)
 
-    cv2.imshow('Fun House Mirror', warped)
-    cv2.imshow('Mask', mask)
-    frame_count += 1
+    def update_control_points(landmarks, mask0):
+        nonlocal src
+        nonlocal dst
+        nonlocal mask
+        src, dst = filters[1].filter(landmarks)
+        # mask = (mask0 * 255).astype(np.uint8)
 
-    if cv2.waitKey(1) == ord('q'):
-        break
+    landmarker = pose_detect.pose_detector(
+        (frame_width, frame_height), update_control_points)
 
-cam.release()
-cv2.destroyAllWindows()
+    if verbose:
+        print("Landmarker created")
+
+    previous_time = 0
+    while True:
+        times = [time.time()]
+
+        diff_time = time.time() - previous_time
+        previous_time = time.time()
+        if diff_time > 0:
+            fps = 1 / diff_time
+        else:
+            fps = 0
+
+        ret, frame = cam.read()
+
+        frame = cv2.flip(frame, 1)
+
+        landmarker.get_pose(frame)
+
+        blured_mask = cv2.blur(mask, (30, 30))
+        frame = cv2.bitwise_and(frame, frame, mask=blured_mask)
+
+        times.append(time.time())
+
+        warper.update_src_points(src)
+        times.append(time.time())
+
+        map_x, map_y = warper.compute_map(dst)
+        times.append(time.time())
+
+        warped = cv2.remap(
+            frame,
+            map_x,
+            map_y,
+            interpolation=cv2.INTER_LINEAR,
+            borderMode=cv2.BORDER_REFLECT101,
+        )
+        times.append(time.time())
+
+        fps_text = f"FPS: {int(fps)}"
+        cv2.putText(warped, fps_text, (20, 70),
+                    cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
+
+        cv2.circle(warped, src[-1].astype(int), 8, (255, 255, 255), -1)
+
+        cv2.imshow('Fun House Mirror', warped)
+
+        if cv2.waitKey(1) == ord('q'):
+            break
+
+    cam.release()
+    cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,12 +1,9 @@
 import numpy as np
 import cv2
-import time
 
 
 class TPS:
-    def __init__(self, frame_size, mesh_size, verbose=False):
-        self.verbose = verbose
-
+    def __init__(self, frame_size, mesh_size):
         self.frame_width, self.frame_height = frame_size
         self.mesh_width, self.mesh_height = mesh_size
 
@@ -23,8 +20,6 @@ class TPS:
         ]).T
 
     def update_src_points(self, src_points):
-        start_time = time.time()
-
         self.src_points = src_points
         self.num_points = self.src_points.shape[0]
 
@@ -69,12 +64,7 @@ class TPS:
 
         self.flat_mesh_tps = mesh_tps.reshape((-1, self.num_points))
 
-        if self.verbose:
-            print(f"Update Source Points: {time.time() - start_time}")
-
     def compute_map(self, dst_points):
-        start_time = time.time()
-
         params_x = self.tps_inv @ np.concatenate(
             [dst_points[:, 0], np.zeros(3)])
         params_y = self.tps_inv @ np.concatenate(
@@ -103,11 +93,5 @@ class TPS:
             (self.frame_width, self.frame_height),
             interpolation=cv2.INTER_LINEAR
         )
-
-        # full_map_x = np.clip(full_map_x, 0, self.frame_width - 1)
-        # full_map_y = np.clip(full_map_y, 0, self.frame_height - 1)
-
-        if self.verbose:
-            print(f"Compute map: {time.time() - start_time}")
 
         return full_map_x, full_map_y
