@@ -22,6 +22,9 @@ def main():
     parser.add_argument(
         '--verbose', '-v', action='store_true', help='Verbose output',
         default=False)
+    parser.add_argument(
+        '--filter', '-f', help='Filter number',
+        default=0)
 
     args = parser.parse_args()
     verbose = args.verbose
@@ -66,7 +69,7 @@ def main():
         nonlocal src
         nonlocal dst
         nonlocal mask
-        src, dst = filters[1].filter(landmarks)
+        src, dst = filters[args.filter].filter(landmarks)
         # mask = (mask0 * 255).astype(np.uint8)
 
     landmarker = pose_detect.pose_detector(
