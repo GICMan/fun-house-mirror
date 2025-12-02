@@ -1,27 +1,28 @@
 import cv2
 import time
+import numpy as np
 import tps
 import pose_detect
-import numpy as np
 from filters import init_filters
 
 cam = cv2.VideoCapture(1)
 cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1240)
 cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
 ret, frame = cam.read()
-
-
 frame_height, frame_width = frame.shape[:2]
+
 filters = init_filters((frame_width, frame_height))
 
 warper = tps.TPS((frame_width, frame_height), (50, 50), verbose=True)
 
-ctrl_nx, ctrl_ny = 2, 2
-xs = np.linspace(0, frame_width - 1, ctrl_nx)
-ys = np.linspace(0, frame_height - 1, ctrl_ny)
-grid_cx, grid_cy = np.meshgrid(xs, ys)
-src = np.vstack([grid_cx.ravel(), grid_cy.ravel()]).T.astype(np.float64)
-np.append(src, [0, 0])
+# initial control points will be replaced after first filter
+src = np.array([
+    [0, 0],
+    [0, frame_height - 1],
+    [frame_width - 1, 0],
+    [frame_width - 1, frame_height - 1]
+])
 dst = src.copy()
 
 
@@ -33,7 +34,6 @@ def update_control_points(landmarks):
 
 landmarker = pose_detect.pose_detector(
     (frame_width, frame_height), update_control_points)
-
 
 previous_time = 0
 frame_count = 0
@@ -47,7 +47,7 @@ while True:
     if diff_time > 0:
         fps = 1 / diff_time
     else:
-        fps = 0  # FPS is 0 initially or if time delta is too small
+        fps = 0
 
     warper.update_src_points(src)
     map_x, map_y = warper.compute_map(dst)
