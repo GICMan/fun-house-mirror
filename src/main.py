@@ -7,7 +7,7 @@ import pose_detect
 from filters import init_filters
 
 
-MESH_SIZE = 50
+MESH_SIZE = 40
 
 
 def main():
@@ -39,7 +39,8 @@ def main():
     cam.set(cv2.CAP_PROP_FPS, 30)
 
     ret, frame = cam.read()
-    frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    if args.rotate:
+        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
     frame_height, frame_width = frame.shape[:2]
 
     if verbose:
@@ -65,14 +66,11 @@ def main():
         [frame_width - 1, frame_height - 1]
     ])
     dst = src.copy()
-    mask = np.full((frame_height, frame_width), 255, dtype=np.uint8)
 
-    def update_control_points(landmarks, mask0):
+    def update_control_points(landmarks):
         nonlocal src
         nonlocal dst
-        nonlocal mask
         src, dst = filters[args.filter].filter(landmarks)
-        # mask = (mask0 * 255).astype(np.uint8)
 
     landmarker = pose_detect.pose_detector(
         (frame_width, frame_height), update_control_points)
@@ -90,14 +88,11 @@ def main():
             fps = 0
 
         ret, frame = cam.read()
-        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
-
+        if args.rotate:
+            frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
         frame = cv2.flip(frame, 1)
 
         landmarker.get_pose(frame)
-
-        blured_mask = cv2.blur(mask, (30, 30))
-        frame = cv2.bitwise_and(frame, frame, mask=blured_mask)
 
         warper.update_src_points(src)
         map_x, map_y = warper.compute_map(dst)
@@ -113,8 +108,6 @@ def main():
         fps_text = f"FPS: {int(fps)}"
         cv2.putText(warped, fps_text, (20, 70),
                     cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
-
-        cv2.circle(warped, src[-1].astype(int), 8, (255, 255, 255), -1)
 
         cv2.imshow('Fun House Mirror', warped)
 
