@@ -17,14 +17,15 @@ def main():
         '--cam', '-c', help='Specify a camera index.',
         default=0, type=int)
     parser.add_argument(
-        '--rotate', '-r', help='If true, frames will be rotated 90 degrees',
-        default=False, type=bool)
+        '--rotate', '-r', action='store_true',
+        help='If true, frames will be rotated 90 degrees',
+        default=False)
     parser.add_argument(
         '--verbose', '-v', action='store_true', help='Verbose output',
         default=False)
     parser.add_argument(
         '--filter', '-f', help='Filter number',
-        default=0)
+        default=0, type=int)
 
     args = parser.parse_args()
     verbose = args.verbose
@@ -38,6 +39,7 @@ def main():
     cam.set(cv2.CAP_PROP_FPS, 30)
 
     ret, frame = cam.read()
+    frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
     frame_height, frame_width = frame.shape[:2]
 
     if verbose:
@@ -80,8 +82,6 @@ def main():
 
     previous_time = 0
     while True:
-        times = [time.time()]
-
         diff_time = time.time() - previous_time
         previous_time = time.time()
         if diff_time > 0:
@@ -90,6 +90,7 @@ def main():
             fps = 0
 
         ret, frame = cam.read()
+        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
         frame = cv2.flip(frame, 1)
 
@@ -98,13 +99,8 @@ def main():
         blured_mask = cv2.blur(mask, (30, 30))
         frame = cv2.bitwise_and(frame, frame, mask=blured_mask)
 
-        times.append(time.time())
-
         warper.update_src_points(src)
-        times.append(time.time())
-
         map_x, map_y = warper.compute_map(dst)
-        times.append(time.time())
 
         warped = cv2.remap(
             frame,
@@ -113,7 +109,6 @@ def main():
             interpolation=cv2.INTER_LINEAR,
             borderMode=cv2.BORDER_REFLECT101,
         )
-        times.append(time.time())
 
         fps_text = f"FPS: {int(fps)}"
         cv2.putText(warped, fps_text, (20, 70),
