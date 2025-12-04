@@ -34,12 +34,12 @@ def main():
         action='store_true',
         default=False)
 
+    args = parser.parse_args()
+    verbose = args.verbose
+
     cv2.namedWindow(WIN_NAME, cv2.WND_PROP_FULLSCREEN)
     cv2.setWindowProperty(
         WIN_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-
-    args = parser.parse_args()
-    verbose = args.verbose
 
     if verbose:
         print(f"Using camera: {args.cam}")
