@@ -109,7 +109,7 @@ def main():
             map_x,
             map_y,
             interpolation=cv2.INTER_LINEAR,
-            borderMode=cv2.BORDER_CONSTANT,
+            borderMode=cv2.BORDER_REFLECT101,
         )
 
         fps_text = f"FPS: {int(fps)}"

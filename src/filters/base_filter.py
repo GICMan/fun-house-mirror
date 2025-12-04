@@ -60,7 +60,11 @@ class BaseFilter:
         pins = [
             [0, 0],
             [0, self.frame_height - 1],
+            [0, self.frame_height / 2],
+            [self.frame_width - 1, self.frame_height / 2],
             [self.frame_width - 1, 0],
+            [self.frame_width / 2, 0],
             [self.frame_width - 1, self.frame_height - 1],
+            [self.frame_width / 2, self.frame_height - 1],
         ]
         return np.append(src, pins, axis=0), np.append(dst, pins, axis=0)
