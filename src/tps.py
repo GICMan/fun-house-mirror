@@ -26,14 +26,10 @@ class TPS:
         # the TPS method uses a kernal mat based on the TPS function,
         # along with an affine part
 
-        kernal_mat = np.zeros(
-            (self.num_points, self.num_points), dtype=np.float64)
-        for i in range(self.num_points):
-            for j in range(self.num_points):
-                dist = np.linalg.norm(src_points[i] - src_points[j])
-                # ensure we never try to take the log of zero
-                dist = np.where(dist == 0, 1e-8, dist)
-                kernal_mat[i, j] = dist * dist * np.log(dist)
+        diff = src_points[:, None, :] - src_points[None, :, :]
+        dist = np.linalg.norm(diff, axis=2)
+        dist = np.where(dist == 0, 1e-8, dist)
+        kernal_mat = dist**2 * np.log(dist)
 
         affine_mat = np.hstack([
             np.ones((self.num_points, 1)),
@@ -49,26 +45,22 @@ class TPS:
         # compute the inverse to solve for parameters, add regularization term
         # to ensure stability
         reg = 1e-6 * np.eye(tps_mat.shape[0])
-        self.tps_inv = np.linalg.inv(tps_mat + reg)
+        self.tps_mat = tps_mat + reg
 
         # compute the base tps function values for each mesh points
-        mesh_tps = np.zeros(
-            (self.mesh_width, self.mesh_height, self.num_points),
-            dtype=np.float64)
-        for i in range(self.num_points):
-            dx = self.mesh_x - src_points[i, 0]
-            dy = self.mesh_y - src_points[i, 1]
-            dist = np.sqrt(dx*dx + dy*dy)
-            dist = np.where(dist == 0, 1e-8, dist)
-            mesh_tps[..., i] = dist * dist * np.log(dist)
+        dx = self.mesh_x[..., None] - src_points[:, 0]
+        dy = self.mesh_y[..., None] - src_points[:, 1]
+        dist = np.sqrt(dx**2 + dy**2)
+        dist = np.where(dist == 0, 1e-8, dist)
+        mesh_tps = dist**2 * np.log(dist)
 
         self.flat_mesh_tps = mesh_tps.reshape((-1, self.num_points))
 
     def compute_map(self, dst_points):
-        params_x = self.tps_inv @ np.concatenate(
-            [dst_points[:, 0], np.zeros(3)])
-        params_y = self.tps_inv @ np.concatenate(
-            [dst_points[:, 1], np.zeros(3)])
+        params_x = np.linalg.solve(self.tps_mat, np.concatenate(
+            [dst_points[:, 0], np.zeros(3)]))
+        params_y = np.linalg.solve(self.tps_mat, np.concatenate(
+            [dst_points[:, 1], np.zeros(3)]))
 
         tps_params_x = params_x[:self.num_points]
         affine_params_x = params_x[self.num_points:]
