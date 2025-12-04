@@ -7,7 +7,8 @@ import pose_detect
 from filters import init_filters
 
 
-MESH_SIZE = 40
+MESH_SIZE = 50
+FPS_ALPHA = 0.1
 
 
 def main():
@@ -79,11 +80,13 @@ def main():
         print("Landmarker created")
 
     previous_time = 0
+    prev_fps = 0
     while True:
         diff_time = time.time() - previous_time
         previous_time = time.time()
         if diff_time > 0:
-            fps = 1 / diff_time
+            fps = FPS_ALPHA * (1 / diff_time) + (1 - FPS_ALPHA) * prev_fps
+            prev_fps = fps
         else:
             fps = 0
 
@@ -102,7 +105,7 @@ def main():
             map_x,
             map_y,
             interpolation=cv2.INTER_LINEAR,
-            borderMode=cv2.BORDER_REFLECT101,
+            borderMode=cv2.BORDER_CONSTANT,
         )
 
         fps_text = f"FPS: {int(fps)}"
