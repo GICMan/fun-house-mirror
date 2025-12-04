@@ -10,6 +10,8 @@ from filters import init_filters
 MESH_SIZE = 50
 FPS_ALPHA = 0.1
 
+WIN_NAME = "Mirror"
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -31,6 +33,10 @@ def main():
         '--high-def', '-hd', help='High definition resolution',
         action='store_true',
         default=False)
+
+    cv2.namedWindow(WIN_NAME, cv2.WND_PROP_FULLSCREEN)
+    cv2.setWindowProperty(
+        WIN_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     args = parser.parse_args()
     verbose = args.verbose
@@ -116,7 +122,7 @@ def main():
         cv2.putText(warped, fps_text, (20, 70),
                     cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
 
-        cv2.imshow('Fun House Mirror', warped)
+        cv2.imshow(WIN_NAME, warped)
 
         if cv2.waitKey(1) == ord('q'):
             break
