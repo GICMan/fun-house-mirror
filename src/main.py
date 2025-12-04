@@ -27,6 +27,10 @@ def main():
     parser.add_argument(
         '--filter', '-f', help='Filter number',
         default=0, type=int)
+    parser.add_argument(
+        '--high-def', '-hd', help='High definition resolution',
+        action='store_true',
+        default=False)
 
     args = parser.parse_args()
     verbose = args.verbose
@@ -35,8 +39,8 @@ def main():
         print(f"Using camera: {args.cam}")
 
     cam = cv2.VideoCapture(args.cam)
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+    cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1920 if args.high_def else 1280)
+    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080 if args.high_def else 720)
     cam.set(cv2.CAP_PROP_FPS, 30)
 
     ret, frame = cam.read()
