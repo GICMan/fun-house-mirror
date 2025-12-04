@@ -1,4 +1,6 @@
 import time
+import threading
+import queue
 import argparse
 import cv2
 import numpy as np
@@ -11,6 +13,42 @@ MESH_SIZE = 50
 FPS_ALPHA = 0.1
 
 WIN_NAME = "Mirror"
+
+
+class Camera:
+    def __init__(self, src=0, hd=False):
+        self.cap = cv2.VideoCapture(src)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920 if hd else 1280)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080 if hd else 720)
+        self.queue = queue.Queue(maxsize=1)
+        self.running = True
+
+        self.thread = threading.Thread(target=self._capture_loop)
+        self.thread.daemon = True
+        self.thread.start()
+
+    def _capture_loop(self):
+        while self.running:
+            ret, frame = self.cap.read()
+            if not ret:
+                continue
+
+            # keep only the most recent frame
+            if not self.queue.empty():
+                try:
+                    self.queue.get_nowait()
+                except queue.Empty:
+                    pass
+
+            self.queue.put(frame)
+
+    def read(self):
+        return self.queue.get()
+
+    def stop(self):
+        self.running = False
+        self.thread.join()
+        self.cap.release()
 
 
 def main():
@@ -44,12 +82,9 @@ def main():
     if verbose:
         print(f"Using camera: {args.cam}")
 
-    cam = cv2.VideoCapture(args.cam)
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1920 if args.high_def else 1280)
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080 if args.high_def else 720)
-    cam.set(cv2.CAP_PROP_FPS, 30)
+    cam = Camera(args.cam, args.high_def)
 
-    ret, frame = cam.read()
+    frame = cam.read()
     if args.rotate:
         frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
     frame_height, frame_width = frame.shape[:2]
@@ -100,7 +135,7 @@ def main():
         else:
             fps = 0
 
-        ret, frame = cam.read()
+        frame = cam.read()
         if args.rotate:
             frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
         frame = cv2.flip(frame, 1)
@@ -127,7 +162,7 @@ def main():
         if cv2.waitKey(1) == ord('q'):
             break
 
-    cam.release()
+    cam.stop()
     cv2.destroyAllWindows()
 
 
