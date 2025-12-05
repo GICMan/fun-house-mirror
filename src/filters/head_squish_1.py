@@ -13,7 +13,7 @@ class HeadSquish1(BaseFilter):
             [lmks['nose'].x, lmks['nose'].y + box_size],
             [lmks['nose'].x + box_size, lmks['nose'].y],
             [lmks['nose'].x, lmks['nose'].y - box_size],
-            [lmks['nose'].x + box_size, lmks['nose'].y],
+            [lmks['nose'].x - box_size, lmks['nose'].y],
             [lmks['nose'].x, lmks['nose'].y],
         ])
         dst = src.copy()

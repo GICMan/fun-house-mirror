@@ -5,12 +5,51 @@ import numpy as np
 import tps
 import pose_detect
 from filters import init_filters
+from camera import Camera
 
 
 MESH_SIZE = 50
 FPS_ALPHA = 0.1
 
 WIN_NAME = "Mirror"
+
+
+def generate_grid_image_transparent(x_num, y_num, width, height,
+                                    line_color=(0, 0, 0, 255),
+                                    line_thickness=1):
+    # Create a transparent image
+    img = np.zeros((height, width, 4), dtype=np.uint8)
+
+    # Compute spacing
+    x_spacing = width / x_num
+    y_spacing = height / y_num
+
+    # Draw vertical lines
+    for i in range(1, x_num):
+        x = int(i * x_spacing)
+        cv2.line(img, (x, 0), (x, height),
+                 line_color, thickness=line_thickness)
+
+    # Draw horizontal lines
+    for j in range(1, y_num):
+        y = int(j * y_spacing)
+        cv2.line(img, (0, y), (width, y), line_color, thickness=line_thickness)
+
+    return img
+
+
+def draw_control(img, src, dst):
+    for i in range(len(src)):
+        if np.array_equal(src[i], dst[i]):
+            cv2.circle(img, (int(src[i][0]), int(
+                src[i][1])), 4, (255, 255, 255), -1)
+        else:
+            cv2.circle(img, (int(src[i][0]), int(
+                src[i][1])), 4, (255, 255, 255), -1)
+            cv2.circle(img, (int(dst[i][0]), int(
+                dst[i][1])), 4, (0, 255, 255), -1)
+            cv2.line(img, (int(src[i][0]), int(src[i][1])),
+                     (int(dst[i][0]), int(dst[i][1])), (0, 255, 255), 2, -1)
 
 
 def main():
@@ -34,28 +73,28 @@ def main():
         action='store_true',
         default=False)
 
+    args = parser.parse_args()
+    verbose = args.verbose
+
     cv2.namedWindow(WIN_NAME, cv2.WND_PROP_FULLSCREEN)
     cv2.setWindowProperty(
         WIN_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
-    args = parser.parse_args()
-    verbose = args.verbose
-
     if verbose:
         print(f"Using camera: {args.cam}")
 
-    cam = cv2.VideoCapture(args.cam)
-    cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1920 if args.high_def else 1280)
-    cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080 if args.high_def else 720)
-    cam.set(cv2.CAP_PROP_FPS, 30)
+    cam = Camera(args.cam, args.high_def)
 
-    ret, frame = cam.read()
+    frame = cam.read()
     if args.rotate:
         frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
     frame_height, frame_width = frame.shape[:2]
 
     if verbose:
         print(f"Frame size: {frame_width} x {frame_height}")
+
+    grid_img = generate_grid_image_transparent(
+        MESH_SIZE, MESH_SIZE, frame_width, frame_height)
 
     filters = init_filters((frame_width, frame_height))
 
@@ -91,6 +130,8 @@ def main():
 
     previous_time = 0
     prev_fps = 0
+    show_grid = False
+    show_ctl = False
     while True:
         diff_time = time.time() - previous_time
         previous_time = time.time()
@@ -100,7 +141,7 @@ def main():
         else:
             fps = 0
 
-        ret, frame = cam.read()
+        frame = cam.read()
         if args.rotate:
             frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
         frame = cv2.flip(frame, 1)
@@ -117,17 +158,37 @@ def main():
             interpolation=cv2.INTER_LINEAR,
             borderMode=cv2.BORDER_REFLECT101,
         )
-
         fps_text = f"FPS: {int(fps)}"
         cv2.putText(warped, fps_text, (20, 70),
                     cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
 
+        if show_grid:
+            warped_grid = cv2.remap(
+                grid_img,
+                map_x,
+                map_y,
+                interpolation=cv2.INTER_LINEAR,
+                borderMode=cv2.BORDER_REFLECT101,
+            )
+            alpha = warped_grid[:, :, 3:] / 255.0
+            overlay_bgr = warped_grid[:, :, :3]
+            warped = (overlay_bgr * alpha + warped *
+                      (1 - alpha)).astype(np.uint8)
+
+        if show_ctl:
+            draw_control(warped, src, dst)
+
         cv2.imshow(WIN_NAME, warped)
 
-        if cv2.waitKey(1) == ord('q'):
+        key = cv2.waitKey(1)
+        if key == ord('q'):
             break
+        elif key == ord('c'):
+            show_ctl = not show_ctl
+        elif key == ord('g'):
+            show_grid = not show_grid
 
-    cam.release()
+    cam.stop()
     cv2.destroyAllWindows()
 
 
