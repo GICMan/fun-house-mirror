@@ -3,7 +3,7 @@ from .big_traps_1 import BigTraps1
 from .dummy import Dummy1
 from .sid_face import SidFace
 from .small_waist import SmallWaist
-from .big_mits import BigMits1
+from .noodle_arms import NoodleArms1
 
 def init_filters(frame_size):
     return [
@@ -12,5 +12,5 @@ def init_filters(frame_size):
         Dummy1(frame_size),
         SidFace(frame_size),
         SmallWaist(frame_size),
-        BigMits1(frame_size),
+        NoodleArms1(frame_size),
     ]

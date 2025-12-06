@@ -2,9 +2,9 @@ from .base_filter import BaseFilter
 import numpy as np
 
 
-class BigMits1(BaseFilter):
+class NoodleArms1(BaseFilter):
     def __init__(self, frame_size):
-        super().__init__(frame_size, "Big Mits 1", [15, 16, 17, 18, 19, 20])
+        super().__init__(frame_size, "Noodle Arms 1", [15, 16, 17, 18, 19, 20])
 
     def filter(self, raw_lmks):
         lmks = super().process_landmarks(raw_lmks)
