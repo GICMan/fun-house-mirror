@@ -1,10 +1,9 @@
 from .base_filter import BaseFilter
 import numpy as np
 
-class HammerHead(BaseFilter):
+class SidFace(BaseFilter):
     def __init__(self, frame_size):
-        # nose (0), left eye (2), right eye (5), left ear (7), right ear (8)
-        super().__init__(frame_size, "Hammer Head Shark", [0, 2, 5, 7, 8])
+        super().__init__(frame_size, "Sid Face", [0, 2, 5, 7, 8])
 
     def filter(self, raw_lmks):
         lmks = super().process_landmarks(raw_lmks)
@@ -15,11 +14,9 @@ class HammerHead(BaseFilter):
         lex, ley = lmks["left ear"].x, lmks["left ear"].y
         rex, rey = lmks["right ear"].x, lmks["right ear"].y
 
-        # gentle, stable amounts (extreme values cause folding)
         eye_stretch = 20
         ear_stretch = 30
 
-        # -------- stable control region around face ----------
         src = np.array([
             [lx, ly],                # left eye
             [rx, ry],                # right eye
