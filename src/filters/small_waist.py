@@ -32,11 +32,11 @@ class SmallWaist(BaseFilter):
         dst[1] = [rhx - waist_in, rhy]     
 
         # upper waist slightly pulled inward to keep curve smooth
-        dst[2] = [lhx + waist_in * 0.6, lhy - 120]
-        dst[3] = [rhx - waist_in * 0.6, rhy - 120]
+        dst[2] = [lhx + waist_in * 0.7, lhy - 120]
+        dst[3] = [rhx - waist_in * 0.7, rhy - 120]
 
         # lower waist slightly inward
-        dst[4] = [lhx + waist_in * 0.5, lhy + 120]
-        dst[5] = [rhx - waist_in * 0.5, rhy + 120]
+        dst[4] = [lhx + waist_in * 0.4, lhy + 120]
+        dst[5] = [rhx - waist_in * 0.4, rhy + 120]
 
         return super().add_pins(src, dst)
