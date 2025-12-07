@@ -1,69 +1,108 @@
 from .base_filter import BaseFilter
 import numpy as np
 
-
 class NoodleArms1(BaseFilter):
     def __init__(self, frame_size):
-        super().__init__(frame_size, "Noodle Arms 1", [15, 16, 17, 18, 19, 20])
+        super().__init__(frame_size, "Noodle Arms 1",
+                         [11,12,13,14,15,16,17,18,19,20])  # shoulders → wrists+fingers
 
     def filter(self, raw_lmks):
         lmks = super().process_landmarks(raw_lmks)
 
+        # Shoulder → elbow → wrist
+        ls = lmks['left shoulder']
+        rs = lmks['right shoulder']
 
-        # Wrists
-        lw_x, lw_y = lmks['left wrist'].x, lmks['left wrist'].y
-        rw_x, rw_y = lmks['right wrist'].x, lmks['right wrist'].y
+        le = lmks['left elbow']
+        re = lmks['right elbow']
 
-        # Finger roots (good palm references)
-        lir_x, lir_y = lmks['left index'].x, lmks['left index'].y
-        rir_x, rir_y = lmks['right index'].x, lmks['right index'].y
+        lw = lmks['left wrist']
+        rw = lmks['right wrist']
 
-        lpr_x, lpr_y = lmks['left pinky'].x, lmks['left pinky'].y
-        rpr_x, rpr_y = lmks['right pinky'].x, lmks['right pinky'].y
+        # Finger roots / tips (your existing logic)
+        li = lmks['left index']
+        ri = lmks['right index']
 
-        # Fingertips
-        li_x, li_y = lmks['left index'].x, lmks['left index'].y
-        ri_x, ri_y = lmks['right index'].x, lmks['right index'].y
+        lp = lmks['left pinky']
+        rp = lmks['right pinky']
 
-        lp_x, lp_y = lmks['left pinky'].x, lmks['left pinky'].y
-        rp_x, rp_y = lmks['right pinky'].x, lmks['right pinky'].y
+        # Midpoints for curve control
+        lu_mid = np.array([(ls.x + le.x)/2, (ls.y + le.y)/2])
+        ll_mid = np.array([(le.x + lw.x)/2, (le.y + lw.y)/2])
 
-        # palm
-        left_palm_x  = (lw_x + lir_x + lpr_x) / 3
-        left_palm_y  = (lw_y + lir_y + lpr_y) / 3
+        ru_mid = np.array([(rs.x + re.x)/2, (rs.y + re.y)/2])
+        rl_mid = np.array([(re.x + rw.x)/2, (re.y + rw.y)/2])
 
-        right_palm_x = (rw_x + rir_x + rpr_x) / 3
-        right_palm_y = (rw_y + rir_y + rpr_y) / 3
+        # Palm centers
+        left_palm_x  = (lw.x + li.x + lp.x) / 3
+        left_palm_y  = (lw.y + li.y + lp.y) / 3
+        right_palm_x = (rw.x + ri.x + rp.x) / 3
+        right_palm_y = (rw.y + ri.y + rp.y) / 3
 
-
+        # Build src pins
         src = np.array([
-            [lw_x, lw_y],       # 0 left wrist anchor
-            [left_palm_x, left_palm_y],   # 1 left palm center
-            [li_x, li_y],       # 2 left index tip
-            [lp_x, lp_y],       # 3 left pinky tip
+            [ls.x, ls.y],       # 0 shoulder
+            [le.x, le.y],       # 1 elbow
+            [lw.x, lw.y],       # 2 wrist
+            lu_mid,             # 3 upper-mid
+            ll_mid,             # 4 lower-mid
 
-            [rw_x, rw_y],       # 4 right wrist anchor
-            [right_palm_x, right_palm_y], # 5 right palm center
-            [ri_x, ri_y],       # 6 right index tip
-            [rp_x, rp_y],       # 7 right pinky tip
+            [rs.x, rs.y],       # 5 shoulder R
+            [re.x, re.y],       # 6 elbow R
+            [rw.x, rw.y],       # 7 wrist R
+            ru_mid,             # 8 upper-mid R
+            rl_mid,             # 9 lower-mid R
+
+            [left_palm_x, left_palm_y],   # 10 palm L
+            [li.x, li.y],                 # 11 index L
+            [lp.x, lp.y],                 # 12 pinky L
+
+            [right_palm_x, right_palm_y], # 13 palm R
+            [ri.x, ri.y],                 # 14 index R
+            [rp.x, rp.y],                 # 15 pinky R
         ])
 
         dst = src.copy()
 
+        # Noodle intensity
+        noodle = 40    # outward bend amount
 
-        swell_side = 50      # how wide the palm spreads
-        swell_down = 10      # how tall the palm expands downward
+        # --- apply curvature to LEFT arm ---
+        # Upper arm vector and perpendicular
+        v_up = np.array([le.x - ls.x, le.y - ls.y])
+        perp_up = np.array([-v_up[1], v_up[0]])
+        perp_up /= (np.linalg.norm(perp_up) + 1e-8)
 
-   
-        dst[1] = [left_palm_x - swell_side, left_palm_y + swell_down]   # palm center
-        dst[2] = [li_x - swell_side, li_y + swell_down * 0.3]           # index tip
-        dst[3] = [lp_x - swell_side, lp_y + swell_down * 0.3]           # pinky tip
+        # Forearm vector and perpendicular
+        v_low = np.array([lw.x - le.x, lw.y - le.y])
+        perp_low = np.array([-v_low[1], v_low[0]])
+        perp_low /= (np.linalg.norm(perp_low) + 1e-8)
 
+        dst[3] = src[3] + perp_up * noodle
+        dst[4] = src[4] + perp_low * noodle
 
-        dst[5] = [right_palm_x + swell_side, right_palm_y + swell_down]
-        dst[6] = [ri_x + swell_side, ri_y + swell_down * 0.3]
-        dst[7] = [rp_x + swell_side, rp_y + swell_down * 0.3]
+        # --- RIGHT arm ---
+        v_up = np.array([re.x - rs.x, re.y - rs.y])
+        perp_up = np.array([-v_up[1], v_up[0]])
+        perp_up /= (np.linalg.norm(perp_up) + 1e-8)
 
-        # Wrist anchors (0 and 4) stay fixed
+        v_low = np.array([rw.x - re.x, rw.y - re.y])
+        perp_low = np.array([-v_low[1], v_low[0]])
+        perp_low /= (np.linalg.norm(perp_low) + 1e-8)
+
+        dst[8] = src[8] + perp_up * noodle
+        dst[9] = src[9] + perp_low * noodle
+
+        # Hand swelling (your original effect)
+        swell_side = 50
+        swell_down = 10
+
+        dst[10] = [left_palm_x - swell_side, left_palm_y + swell_down]
+        dst[11] = [li.x - swell_side, li.y + swell_down * 0.3]
+        dst[12] = [lp.x - swell_side, lp.y + swell_down * 0.3]
+
+        dst[13] = [right_palm_x + swell_side, right_palm_y + swell_down]
+        dst[14] = [ri.x + swell_side, ri.y + swell_down * 0.3]
+        dst[15] = [rp.x + swell_side, rp.y + swell_down * 0.3]
 
         return super().add_pins(src, dst)
