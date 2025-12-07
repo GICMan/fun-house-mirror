@@ -160,6 +160,9 @@ def main():
     if verbose:
         print("Landmarker created")
 
+    (text_width, text_height), baseline = cv2.getTextSize(
+        "Saving in: 0.00s", cv2.FONT_HERSHEY_PLAIN, 4, 3)
+
     previous_time = 0
     prev_fps = 0
     show_grid = False
@@ -203,9 +206,7 @@ def main():
             next_delay = 0
 
         if capture_delay >= NEXT_THRESH:
-            # capture_delay = 0
             count_down = COUNT_DOWN_TIME
-            print(count_down)
 
         if next_delay >= NEXT_THRESH:
             next_delay = 0
@@ -234,13 +235,14 @@ def main():
             count_down -= 1
 
         fps_text = f"FPS: {int(fps)}"
-        cv2.putText(warped, fps_text, (20, 70),
-                    cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
+        cv2.putText(warped, fps_text, (20, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 3)
 
         if count_down > 0:
             count_down -= 1
-            cv2.putText(warped, f"{count_down / 30:2.2f}", (frame_width // 2 - 50, frame_height // 2),
-                        cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
+            cv2.putText(warped, f"Saving in: {count_down / 30:2.2f}s",
+                        ((frame_width - text_width) // 2, frame_height // 2),
+                        cv2.FONT_HERSHEY_PLAIN, 4, (0, 255, 0), 3)
 
         if show_grid:
             warped_grid = cv2.remap(
