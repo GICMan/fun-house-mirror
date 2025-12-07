@@ -4,6 +4,7 @@ from .long_head import LongHead
 from .sid_face import SidFace
 from .small_waist import SmallWaist
 from .noodle_arms import NoodleArms1
+from .small_mouth import SmallMouth
 
 def init_filters(frame_size):
     return [
@@ -13,4 +14,5 @@ def init_filters(frame_size):
         SidFace(frame_size),
         SmallWaist(frame_size),
         NoodleArms1(frame_size),
+        SmallMouth(frame_size),
     ]
