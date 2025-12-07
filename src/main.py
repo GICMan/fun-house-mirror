@@ -56,6 +56,8 @@ SWITCH_THRESH = 0.3
 NEXT_THRESH = 30
 PREV_THRESH = 30
 
+COUNT_DOWN_TIME = 160
+
 
 def is_touching_head(landmarks):
     head_x = landmarks[0][0]
@@ -71,10 +73,7 @@ def is_touching_head(landmarks):
 
     left_dist = np.sqrt((head_x - left_x) ** 2 + (head_y - left_y) ** 2)
 
-    if left_dist < SWITCH_THRESH:
-        return "left"
-    elif right_dist < SWITCH_THRESH:
-        return "right"
+    return (left_dist < SWITCH_THRESH, right_dist < SWITCH_THRESH)
 
 
 def main():
@@ -144,13 +143,15 @@ def main():
     ])
     dst = src.copy()
 
-    touching = None
+    touching_left = False
+    touching_right = False
 
     def update_control_points(landmarks):
         nonlocal src
         nonlocal dst
-        nonlocal touching
-        touching = is_touching_head(landmarks)
+        nonlocal touching_right
+        nonlocal touching_left
+        touching_left, touching_right = is_touching_head(landmarks)
         src, dst = filters[curr_filter].filter(landmarks)
 
     landmarker = pose_detect.pose_detector(
@@ -166,6 +167,8 @@ def main():
 
     next_delay = 0
     prev_delay = 0
+    capture_delay = 0
+    count_down = -1
     while True:
         diff_time = time.time() - previous_time
         previous_time = time.time()
@@ -182,15 +185,27 @@ def main():
 
         landmarker.get_pose(frame)
 
-        if touching == "right":
+        if touching_right and touching_left:
+            capture_delay += 1
+            prev_delay = 0
+            next_delay = 0
+        elif touching_right:
             next_delay += 1
             prev_delay = 0
-        elif touching == "left":
+            capture_delay = 0
+        elif touching_left:
             prev_delay += 1
             next_delay = 0
+            capture_delay = 0
         else:
+            capture_delay = 0
             prev_delay = 0
             next_delay = 0
+
+        if capture_delay >= NEXT_THRESH:
+            # capture_delay = 0
+            count_down = COUNT_DOWN_TIME
+            print(count_down)
 
         if next_delay >= NEXT_THRESH:
             next_delay = 0
@@ -212,9 +227,20 @@ def main():
             interpolation=cv2.INTER_LINEAR,
             borderMode=cv2.BORDER_REFLECT101,
         )
+
+        if count_down == 0:
+            cv2.imwrite(f"./capture/{time.time()}.jpg", warped)
+            warped = np.ones((frame_height, frame_height))
+            count_down -= 1
+
         fps_text = f"FPS: {int(fps)}"
         cv2.putText(warped, fps_text, (20, 70),
                     cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
+
+        if count_down > 0:
+            count_down -= 1
+            cv2.putText(warped, f"{count_down / 30:2.2f}", (frame_width // 2 - 50, frame_height // 2),
+                        cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 3)
 
         if show_grid:
             warped_grid = cv2.remap(
