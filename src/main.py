@@ -56,7 +56,7 @@ SWITCH_THRESH = 0.3
 NEXT_THRESH = 30
 PREV_THRESH = 30
 
-COUNT_DOWN_TIME = 160
+COUNT_DOWN_TIME = 91
 
 
 def is_touching_head(landmarks):
