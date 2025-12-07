@@ -52,6 +52,31 @@ def draw_control(img, src, dst):
                      (int(dst[i][0]), int(dst[i][1])), (0, 255, 255), 2, -1)
 
 
+SWITCH_THRESH = 0.3
+NEXT_THRESH = 30
+PREV_THRESH = 30
+
+
+def is_touching_head(landmarks):
+    head_x = landmarks[0][0]
+    head_y = landmarks[0][1]
+
+    left_x = landmarks[20][0]
+    left_y = landmarks[20][1]
+
+    right_x = landmarks[19][0]
+    right_y = landmarks[19][1]
+
+    right_dist = np.sqrt((head_x - right_x) ** 2 + (head_y - right_y) ** 2)
+
+    left_dist = np.sqrt((head_x - left_x) ** 2 + (head_y - left_y) ** 2)
+
+    if left_dist < SWITCH_THRESH:
+        return "left"
+    elif right_dist < SWITCH_THRESH:
+        return "right"
+
+
 def main():
     parser = argparse.ArgumentParser(
         description='A digital fun-house mirror.')
@@ -98,6 +123,8 @@ def main():
 
     filters = init_filters((frame_width, frame_height))
 
+    curr_filter = args.filter
+
     if verbose:
         print("Initializing filters:")
         for filter in filters:
@@ -117,10 +144,14 @@ def main():
     ])
     dst = src.copy()
 
+    touching = None
+
     def update_control_points(landmarks):
         nonlocal src
         nonlocal dst
-        src, dst = filters[args.filter].filter(landmarks)
+        nonlocal touching
+        touching = is_touching_head(landmarks)
+        src, dst = filters[curr_filter].filter(landmarks)
 
     landmarker = pose_detect.pose_detector(
         (frame_width, frame_height), update_control_points)
@@ -132,6 +163,9 @@ def main():
     prev_fps = 0
     show_grid = False
     show_ctl = False
+
+    next_delay = 0
+    prev_delay = 0
     while True:
         diff_time = time.time() - previous_time
         previous_time = time.time()
@@ -147,6 +181,26 @@ def main():
         frame = cv2.flip(frame, 1)
 
         landmarker.get_pose(frame)
+
+        if touching == "right":
+            next_delay += 1
+            prev_delay = 0
+        elif touching == "left":
+            prev_delay += 1
+            next_delay = 0
+        else:
+            prev_delay = 0
+            next_delay = 0
+
+        if next_delay >= NEXT_THRESH:
+            next_delay = 0
+            curr_filter += 1
+            curr_filter %= len(filters)
+
+        if prev_delay >= NEXT_THRESH:
+            prev_delay = 0
+            curr_filter -= 1
+            curr_filter %= len(filters)
 
         warper.update_src_points(src)
         map_x, map_y = warper.compute_map(dst)
