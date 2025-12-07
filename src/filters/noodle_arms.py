@@ -81,6 +81,15 @@ class NoodleArms1(BaseFilter):
         dst[3] = src[3] + perp_up * noodle
         dst[4] = src[4] + perp_low * noodle
 
+        # --- RIGHT arm ---
+        v_up = np.array([re.x - rs.x, re.y - rs.y])
+        perp_up = np.array([-v_up[1], v_up[0]])
+        perp_up /= (np.linalg.norm(perp_up) + 1e-8)
+
+        v_low = np.array([rw.x - re.x, rw.y - re.y])
+        perp_low = np.array([-v_low[1], v_low[0]])
+        perp_low /= (np.linalg.norm(perp_low) + 1e-8)
+
         dst[8] = src[8] + perp_up * noodle
         dst[9] = src[9] + perp_low * noodle
 
