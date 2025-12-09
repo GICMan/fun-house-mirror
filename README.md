@@ -13,3 +13,7 @@ Gabriel Casselman, Ryan Schouten, Matthew Tallarico
 ## Usage
 
 Run the main file with `poetry run python ./src/main.py`
+
+Run to list command line args `poetry run python ./src/main.py --help`
+
+These options allow for selecting cameras, resolution, and camera rotation.
